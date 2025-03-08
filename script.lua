@@ -1,18 +1,3 @@
-local HttpService = game:GetService("HttpService")
-local KILLSWITCH_URL = "https://pastebin.com/raw/3LNQJM1Q" -- Your Pastebin raw URL
-
-local function checkKillswitch()
-    local success, response = pcall(function()
-        return HttpService:GetAsync(KILLSWITCH_URL)
-    end)
-    if not success or response ~= "on" then
-        error("This script has been disabled by the creator.")
-    end
-end
-
-checkKillswitch()
-
--- Your original script starts here
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
@@ -27,7 +12,78 @@ local originalSizes = {}
 local isRunning = false
 local beams = {}
 local raceTypes = {"110 METER HURDLES", "200 METER DASH"}
+local VALID_KEY = "trackandfield2025scriptlyezontop"
+local WHITELISTED_USERS = {"nature_garss"} -- Add more usernames here if needed
 
+-- Function to create the Key System UI
+local function createKeyUI()
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "KeySystemUI"
+    screenGui.ResetOnSpawn = false
+    screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+    local keyFrame = Instance.new("Frame")
+    keyFrame.Size = UDim2.new(0, 300, 0, 200)
+    keyFrame.Position = UDim2.new(0.5, -150, 0.5, -100)
+    keyFrame.BackgroundColor3 = Color3.fromRGB(10, 30, 40)
+    keyFrame.BorderSizePixel = 0
+    Instance.new("UICorner", keyFrame).CornerRadius = UDim.new(0, 5)
+    keyFrame.Parent = screenGui
+
+    local titleLabel = Instance.new("TextLabel")
+    titleLabel.Size = UDim2.new(1, 0, 0, 30)
+    titleLabel.BackgroundColor3 = Color3.fromRGB(20, 50, 70)
+    titleLabel.BorderSizePixel = 0
+    titleLabel.Text = "Key System"
+    titleLabel.TextColor3 = Color3.fromRGB(220, 220, 230)
+    titleLabel.TextSize = 16
+    titleLabel.Font = Enum.Font.GothamBold
+    titleLabel.Parent = keyFrame
+
+    local keyBox = Instance.new("TextBox")
+    keyBox.Size = UDim2.new(0.8, 0, 0, 30)
+    keyBox.Position = UDim2.new(0.1, 0, 0.3, 0)
+    keyBox.BackgroundColor3 = Color3.fromRGB(30, 20, 40)
+    keyBox.TextColor3 = Color3.fromRGB(150, 200, 210)
+    keyBox.PlaceholderText = "Enter your key here..."
+    keyBox.TextSize = 14
+    keyBox.Font = Enum.Font.Gotham
+    keyBox.ClearTextOnFocus = false
+    Instance.new("UICorner", keyBox).CornerRadius = UDim.new(0, 5)
+    keyBox.Parent = keyFrame
+
+    local submitButton = Instance.new("TextButton")
+    submitButton.Size = UDim2.new(0.4, 0, 0, 30)
+    submitButton.Position = UDim2.new(0.3, 0, 0.55, 0)
+    submitButton.BackgroundColor3 = Color3.fromRGB(0, 150, 200)
+    submitButton.Text = "Submit"
+    submitButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    submitButton.TextSize = 14
+    submitButton.Font = Enum.Font.Gotham
+    Instance.new("UICorner", submitButton).CornerRadius = UDim.new(0, 5)
+    submitButton.Parent = keyFrame
+
+    local linkButton = Instance.new("TextButton")
+    linkButton.Size = UDim2.new(0.8, 0, 0, 30)
+    linkButton.Position = UDim2.new(0.1, 0, 0.75, 0)
+    linkButton.BackgroundColor3 = Color3.fromRGB(0, 100, 180)
+    linkButton.Text = "Copy Key Link"
+    linkButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    linkButton.TextSize = 14
+    linkButton.Font = Enum.Font.Gotham
+    Instance.new("UICorner", linkButton).CornerRadius = UDim.new(0, 5)
+    linkButton.Parent = keyFrame
+
+    return {
+        gui = screenGui,
+        frame = keyFrame,
+        textBox = keyBox,
+        submitButton = submitButton,
+        linkButton = linkButton
+    }
+end
+
+-- Existing createUI function (unchanged)
 local function createUI()
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = "TrackAndFieldUI"
@@ -287,32 +343,103 @@ local function addHighlightAndBeam(part)
     createBeam(part)
 end
 
-local uiElements = createUI()
+-- Initialize Key System
+local keyElements = createKeyUI()
+local uiElements = nil -- Delay main UI creation until key and username are validated
+makeDraggable(keyElements.frame)
+
+local function initializeMainUI()
+    print("Initializing main UI for " .. LocalPlayer.Name)
+    uiElements = createUI()
+    makeDraggable(uiElements.mainFrame)
+    makeDraggable(uiElements.menuButton)
+
+    if UserInputService.TouchEnabled then
+        uiElements.menuButton.Visible = true
+    end
+
+    uiElements.menuButton.MouseButton1Click:Connect(function()
+        uiElements.mainFrame.Visible = not uiElements.mainFrame.Visible
+        updateButtonPosition()
+    end)
+
+    uiElements.enableButton.MouseButton1Click:Connect(function()
+        isEnabled = not isEnabled
+        uiElements.enableButton.Text = isEnabled and "Enable" or "Disable"
+        uiElements.enableButton.BackgroundColor3 = isEnabled and Color3.fromRGB(0, 150, 200) or Color3.fromRGB(80, 60, 90)
+        updateUI()
+    end)
+
+    uiElements.beamToggle.MouseButton1Click:Connect(function()
+        showBeams = not showBeams
+        uiElements.beamToggle.Text = "Beams: " .. (showBeams and "ON" or "OFF")
+        uiElements.beamToggle.BackgroundColor3 = showBeams and Color3.fromRGB(0, 100, 180) or Color3.fromRGB(80, 60, 90)
+        uiElements.toggleKnob.Position = showBeams and UDim2.new(0, 20, 0, 0) or UDim2.new(0, 0, 0, 0)
+        uiElements.toggleSwitch.BackgroundColor3 = showBeams and Color3.fromRGB(0, 150, 200) or Color3.fromRGB(50, 30, 60)
+        updateUI()
+    end)
+
+    updateUI() -- Initial update after UI is created
+end
+
+keyElements.linkButton.MouseButton1Click:Connect(function()
+    local link = "https://lootdest.org/s?Xm4tux3r"
+    pcall(function()
+        setclipboard(link) -- Copies to clipboard
+        keyElements.linkButton.Text = "Copied!"
+        task.wait(1)
+        keyElements.linkButton.Text = "Copy Key Link"
+    end)
+end)
+
+keyElements.submitButton.MouseButton1Click:Connect(function()
+    local enteredKey = keyElements.textBox.Text
+    print("Entered key: " .. enteredKey)
+    if enteredKey == VALID_KEY then
+        print("Key is valid, checking username: " .. LocalPlayer.Name)
+        -- Make username check case-insensitive
+        local isWhitelisted = false
+        for _, user in ipairs(WHITELISTED_USERS) do
+            if string.lower(user) == string.lower(LocalPlayer.Name) then
+                isWhitelisted = true
+                break
+            end
+        end
+        if isWhitelisted then
+            print("Username " .. LocalPlayer.Name .. " is whitelisted")
+            keyElements.gui:Destroy() -- Remove key UI
+            initializeMainUI() -- Load main UI
+        else
+            print("Username " .. LocalPlayer.Name .. " is not whitelisted")
+            keyElements.textBox.Text = ""
+            keyElements.textBox.PlaceholderText = "Username not whitelisted!"
+            task.wait(1)
+            keyElements.textBox.PlaceholderText = "Enter your key here..."
+        end
+    else
+        print("Invalid key entered")
+        keyElements.textBox.Text = ""
+        keyElements.textBox.PlaceholderText = "Invalid key! Try again."
+        task.wait(1)
+        keyElements.textBox.PlaceholderText = "Enter your key here..."
+    end
+end)
+
 local isEnabled = true
 local showBeams = true
 
-makeDraggable(uiElements.mainFrame)
-makeDraggable(uiElements.menuButton)
-
-if UserInputService.TouchEnabled then
-    uiElements.menuButton.Visible = true
-end
-
-uiElements.menuButton.MouseButton1Click:Connect(function()
-    uiElements.mainFrame.Visible = not uiElements.mainFrame.Visible
-    updateButtonPosition()
-end)
-
 local function updateButtonPosition()
-    if uiElements.mainFrame.Visible then
-        uiElements.menuButton.Position = UDim2.new(0, 10, 0, 10)
-    else
-        uiElements.menuButton.Position = UDim2.new(0.5, -30, 0.5, -30)
+    if uiElements then
+        if uiElements.mainFrame.Visible then
+            uiElements.menuButton.Position = UDim2.new(0, 10, 0, 10)
+        else
+            uiElements.menuButton.Position = UDim2.new(0.5, -30, 0.5, -30)
+        end
     end
 end
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
+    if gameProcessed or not uiElements then return end
     if input.KeyCode == Enum.KeyCode.LeftControl then
         uiElements.mainFrame.Visible = not uiElements.mainFrame.Visible
         updateButtonPosition()
@@ -320,8 +447,8 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 end)
 
 local function updateUI()
-    if not isEnabled then
-        uiElements.statusLabel.Text = "Status: Disabled"
+    if not uiElements or not isEnabled then
+        if uiElements then uiElements.statusLabel.Text = "Status: Disabled" end
         return
     end
     uiElements.statusLabel.Text = "Status: Active"
@@ -386,22 +513,6 @@ local function clearBeams()
     beams = {}
 end
 
-uiElements.enableButton.MouseButton1Click:Connect(function()
-    isEnabled = not isEnabled
-    uiElements.enableButton.Text = isEnabled and "Enable" or "Disable"
-    uiElements.enableButton.BackgroundColor3 = isEnabled and Color3.fromRGB(0, 150, 200) or Color3.fromRGB(80, 60, 90)
-    updateUI()
-end)
-
-uiElements.beamToggle.MouseButton1Click:Connect(function()
-    showBeams = not showBeams
-    uiElements.beamToggle.Text = "Beams: " .. (showBeams and "ON" or "OFF")
-    uiElements.beamToggle.BackgroundColor3 = showBeams and Color3.fromRGB(0, 100, 180) or Color3.fromRGB(80, 60, 90)
-    uiElements.toggleKnob.Position = showBeams and UDim2.new(0, 20, 0, 0) or UDim2.new(0, 0, 0, 0)
-    uiElements.toggleSwitch.BackgroundColor3 = showBeams and Color3.fromRGB(0, 150, 200) or Color3.fromRGB(50, 30, 60)
-    updateUI()
-end)
-
 LocalPlayer.CharacterAdded:Connect(function(newCharacter)
     Character = newCharacter
     Humanoid = Character:WaitForChild("Humanoid")
@@ -411,4 +522,5 @@ end)
 
 Workspace.DescendantAdded:Connect(debounceUpdate)
 RunService.Heartbeat:Connect(updateUI)
-updateUI()
+
+print("Script started for " .. LocalPlayer.Name)

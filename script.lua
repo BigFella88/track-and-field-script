@@ -13,7 +13,6 @@ local isRunning = false
 local beams = {}
 local raceTypes = {"110 METER HURDLES", "200 METER DASH"}
 local VALID_KEY = "trackandfield2025scriptlyezontop"
-local WHITELISTED_USERS = {"nature_garss"} -- Add more usernames here if needed
 
 -- Function to create the Key System UI
 local function createKeyUI()
@@ -345,7 +344,7 @@ end
 
 -- Initialize Key System
 local keyElements = createKeyUI()
-local uiElements = nil -- Delay main UI creation until key and username are validated
+local uiElements = nil -- Delay main UI creation until key is validated
 makeDraggable(keyElements.frame)
 
 local function initializeMainUI()
@@ -396,26 +395,9 @@ keyElements.submitButton.MouseButton1Click:Connect(function()
     local enteredKey = keyElements.textBox.Text
     print("Entered key: " .. enteredKey)
     if enteredKey == VALID_KEY then
-        print("Key is valid, checking username: " .. LocalPlayer.Name)
-        -- Make username check case-insensitive
-        local isWhitelisted = false
-        for _, user in ipairs(WHITELISTED_USERS) do
-            if string.lower(user) == string.lower(LocalPlayer.Name) then
-                isWhitelisted = true
-                break
-            end
-        end
-        if isWhitelisted then
-            print("Username " .. LocalPlayer.Name .. " is whitelisted")
-            keyElements.gui:Destroy() -- Remove key UI
-            initializeMainUI() -- Load main UI
-        else
-            print("Username " .. LocalPlayer.Name .. " is not whitelisted")
-            keyElements.textBox.Text = ""
-            keyElements.textBox.PlaceholderText = "Username not whitelisted!"
-            task.wait(1)
-            keyElements.textBox.PlaceholderText = "Enter your key here..."
-        end
+        print("Key is valid for " .. LocalPlayer.Name)
+        keyElements.gui:Destroy() -- Remove key UI
+        initializeMainUI() -- Load main UI
     else
         print("Invalid key entered")
         keyElements.textBox.Text = ""

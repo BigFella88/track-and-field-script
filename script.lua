@@ -82,7 +82,7 @@ local function createKeyUI()
     }
 end
 
--- Existing createUI function (unchanged)
+-- Modified createUI function with slider
 local function createUI()
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = "TrackAndFieldUI"
@@ -90,8 +90,8 @@ local function createUI()
     screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
     local mainFrame = Instance.new("Frame")
-    mainFrame.Size = UDim2.new(0, 400, 0, 330)
-    mainFrame.Position = UDim2.new(0.5, -200, 0.5, -165)
+    mainFrame.Size = UDim2.new(0, 400, 0, 390) -- Increased height to accommodate slider
+    mainFrame.Position = UDim2.new(0.5, -200, 0.5, -195)
     mainFrame.BackgroundColor3 = Color3.fromRGB(10, 30, 40)
     mainFrame.BorderSizePixel = 0
     Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 5)
@@ -263,6 +263,41 @@ local function createUI()
     checkpointLabel.Font = Enum.Font.Gotham
     checkpointLabel.Parent = checkpointFrame
 
+    -- Slider for studs customization
+    local sliderFrame = Instance.new("Frame")
+    sliderFrame.Size = UDim2.new(1, 0, 0, 50)
+    sliderFrame.Position = UDim2.new(0, 0, 0, 300)
+    sliderFrame.BackgroundColor3 = Color3.fromRGB(30, 20, 40)
+    sliderFrame.BorderSizePixel = 0
+    Instance.new("UICorner", sliderFrame).CornerRadius = UDim.new(0, 5)
+    sliderFrame.Parent = contentFrame
+
+    local sliderLabel = Instance.new("TextLabel")
+    sliderLabel.Size = UDim2.new(0, 80, 0, 20)
+    sliderLabel.Position = UDim2.new(0, 10, 0, 5)
+    sliderLabel.BackgroundTransparency = 1
+    sliderLabel.Text = "Studs: 100"
+    sliderLabel.TextColor3 = Color3.fromRGB(150, 200, 210)
+    sliderLabel.TextSize = 14
+    sliderLabel.Font = Enum.Font.Gotham
+    sliderLabel.Parent = sliderFrame
+
+    local sliderTrack = Instance.new("Frame")
+    sliderTrack.Size = UDim2.new(0, 260, 0, 10)
+    sliderTrack.Position = UDim2.new(0, 100, 0, 20)
+    sliderTrack.BackgroundColor3 = Color3.fromRGB(50, 30, 60)
+    sliderTrack.BorderSizePixel = 0
+    Instance.new("UICorner", sliderTrack).CornerRadius = UDim.new(0, 5)
+    sliderTrack.Parent = sliderFrame
+
+    local sliderKnob = Instance.new("Frame")
+    sliderKnob.Size = UDim2.new(0, 20, 0, 20)
+    sliderKnob.Position = UDim2.new(0, 120, 0, 15) -- Default at 100 studs (middle-ish)
+    sliderKnob.BackgroundColor3 = Color3.fromRGB(0, 150, 200)
+    sliderKnob.BorderSizePixel = 0
+    Instance.new("UICorner", sliderKnob).CornerRadius = UDim.new(0, 10)
+    sliderKnob.Parent = sliderFrame
+
     return {
         gui = screenGui,
         mainFrame = mainFrame,
@@ -274,7 +309,10 @@ local function createUI()
         beamToggle = beamToggle,
         toggleSwitch = toggleSwitch,
         toggleKnob = toggleKnob,
-        checkpointLabel = checkpointLabel
+        checkpointLabel = checkpointLabel,
+        sliderLabel = sliderLabel,
+        sliderTrack = sliderTrack,
+        sliderKnob = sliderKnob
     }
 end
 
@@ -378,6 +416,36 @@ local function initializeMainUI()
         updateUI()
     end)
 
+    -- Slider dragging logic
+    local draggingSlider = false
+    uiElements.sliderKnob.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            draggingSlider = true
+        end
+    end)
+
+    uiElements.sliderKnob.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            draggingSlider = false
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if draggingSlider and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local trackAbsPos = uiElements.sliderTrack.AbsolutePosition
+            local trackAbsSize = uiElements.sliderTrack.AbsoluteSize
+            local knobAbsSize = uiElements.sliderKnob.AbsoluteSize
+
+            local newX = math.clamp(input.Position.X - trackAbsPos.X - knobAbsSize.X / 2, 0, trackAbsSize.X - knobAbsSize.X)
+            uiElements.sliderKnob.Position = UDim2.new(0, newX + 100, 0, 15) -- Offset by 100 to align with track
+
+            -- Map slider position to studs (0 to 500 range)
+            local studs = math.floor((newX / (trackAbsSize.X - knobAbsSize.X)) * 500)
+            uiElements.sliderLabel.Text = "Studs: " .. studs
+            updateUI() -- Update instantly
+        end
+    end)
+
     updateUI() -- Initial update after UI is created
 end
 
@@ -438,6 +506,11 @@ local function updateUI()
         local raceTitle = Workspace.Map.Timers.Timer.Title.SurfaceGui.TitleText
         uiElements.raceLabel.Text = "Current Race: " .. raceTitle.Text
         local checkpointCount = 0
+
+        -- Get studs from slider
+        local studsText = uiElements.sliderLabel.Text:match("%d+")
+        local studs = studsText and tonumber(studsText) or 100 -- Default to 100 if parsing fails
+
         for _, part in ipairs(Workspace:GetDescendants()) do
             if part:IsA("Part") then
                 if part.Name == "EndPoint" or part.Name:match("^Checkpoint%d+$") then
@@ -449,20 +522,7 @@ local function updateUI()
                     if not originalSizes[part] then
                         originalSizes[part] = part.Size
                     end
-                    local newSize
-                    if raceTitle.Text == "300 METER DASH" then
-                        newSize = Vector3.new(part.Size.X, part.Size.Y, 285)
-                    elseif raceTitle.Text == "60 METER DASH" then
-                        newSize = Vector3.new(part.Size.X, part.Size.Y, 40)
-                    elseif raceTitle.Text == "100 METER DASH" then
-                        newSize = Vector3.new(part.Size.X, part.Size.Y, 40)
-                    elseif table.find(raceTypes, raceTitle.Text) then
-                        newSize = Vector3.new(part.Size.X, part.Size.Y, 85)
-                    elseif raceTitle.Text:find("RELAY") then
-                        newSize = Vector3.new(part.Size.X, part.Size.Y, 65)
-                    else
-                        newSize = Vector3.new(part.Size.X, part.Size.Y, 380)
-                    end
+                    local newSize = Vector3.new(part.Size.X, part.Size.Y, studs)
                     if part.Size ~= newSize then
                         part.Size = newSize
                         part.CanCollide = false

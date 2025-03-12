@@ -12,7 +12,7 @@ local originalSizes = {}
 local isRunning = false
 local beams = {}
 local raceTypes = {"110 METER HURDLES", "200 METER DASH"}
-local VALID_KEY = "trackandfield2025scriptlyezontop"
+local VALID_KEY = "stopbypassingwithlinkvertise2025"
 
 -- Function to create the Key System UI
 local function createKeyUI()

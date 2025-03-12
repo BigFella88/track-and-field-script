@@ -450,7 +450,7 @@ local function initializeMainUI()
 end
 
 keyElements.linkButton.MouseButton1Click:Connect(function()
-    local link = "https://lootdest.org/s?Xm4tux3r"
+    local link = "https://link-center.net/174459/key-system"
     pcall(function()
         setclipboard(link) -- Copies to clipboard
         keyElements.linkButton.Text = "Copied!"

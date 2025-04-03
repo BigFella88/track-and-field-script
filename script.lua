@@ -12,7 +12,7 @@ local originalSizes = {}
 local isRunning = false
 local beams = {}
 local raceTypes = {"110 METER HURDLES", "200 METER DASH"}
-local VALID_KEY = "roblokidcoolfriedheswythis"
+local VALID_KEY = "TrackNdFieLdIsSucHaKoOlGaME"
 
 -- Function to create the Key System UI
 local function createKeyUI()
